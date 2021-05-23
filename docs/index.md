@@ -6,7 +6,6 @@ of one or more bottle(s) and have the pipeline identify the wines and be able to
 url for that specific wine.
 
 
-
 ## The Pipeline
 
 A modified MaskRCNN model -> x wine bottle masks -> nearest neighbour classifier using sift/surf/orb
