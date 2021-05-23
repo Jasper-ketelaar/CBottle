@@ -16,6 +16,8 @@ images/
 logs/
 share/
 
+# Pycache
+**__pycache__**
 
 # Coco dir
 coco_data/
