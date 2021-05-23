@@ -11,6 +11,7 @@ etc/
 # Stuff local to our project
 dev/
 images/
+!docs/images
 .env
 *.h5
 logs/
