@@ -1,0 +1,3 @@
+pycotools
+skimage
+git+git://github.com/leekunhee/Mask_RCNN.git@tensorflow2.0

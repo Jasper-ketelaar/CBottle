@@ -1,0 +1,21 @@
+# Lambda stack venv generated
+lib**
+bin/
+include/
+pyvenv.cfg
+etc/
+
+# PyCharm
+.idea/
+
+# Stuff local to our project
+dev/
+images/
+.env
+*.h5
+logs/
+share/
+
+
+# Coco dir
+coco_data/
