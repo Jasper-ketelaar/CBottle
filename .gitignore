@@ -16,6 +16,7 @@ images/
 *.h5
 logs/
 share/
+splashes/
 
 # Pycache
 **__pycache__**

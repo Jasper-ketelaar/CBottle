@@ -108,7 +108,7 @@ class CocoConfig(Config):
 
 class CocoDataset(utils.Dataset):
     def load_coco(self, dataset_dir, subset, year=DEFAULT_DATASET_YEAR, class_ids=None,
-                  class_map=None, return_coco=False, auto_download=False):
+                  class_map=None, return_coco=False, auto_download=False, max_id=-1):
         """Load a subset of the COCO dataset.
         dataset_dir: The root directory of the COCO dataset.
         subset: What to load (train, val, minival, valminusminival)
@@ -139,6 +139,8 @@ class CocoDataset(utils.Dataset):
             for id in class_ids:
                 image_ids.extend(list(coco.getImgIds(catIds=[id])))
             # Remove duplicates
+            if max_id > -1:
+                image_ids = list(filter(lambda x: x < max_id, image_ids))
             image_ids = list(set(image_ids))
         else:
             # All images
@@ -157,6 +159,7 @@ class CocoDataset(utils.Dataset):
                 height=coco.imgs[i]["height"],
                 annotations=coco.loadAnns(coco.getAnnIds(
                     imgIds=[i], catIds=class_ids, iscrowd=None)))
+        print(self.image_info)
         if return_coco:
             return coco
 
