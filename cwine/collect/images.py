@@ -7,7 +7,7 @@ from typing import Dict
 
 import requests
 
-from cwine.model.structure import Wine, Winery, Region, Country
+from cwine.model.structure import Wine, Country
 
 
 def _default_row_filter(row):
@@ -117,7 +117,8 @@ class WineImageDownloader:
             [64, 128, 256, 384, 512],
             [85, 171, 341, 512, 683],
         ]
-        self.interesting_angles = [0, 1, 5, 6, 7, 11]
+        self.interesting_angles = [0]
+        # self.interesting_angles = [0, 1, 5, 6, 7, 11]
         self.responses = dict()
 
     def perform_async(self, s3_format, ext='png'):
@@ -125,9 +126,9 @@ class WineImageDownloader:
         format_types_len = len(self.format_types)
         for fi in range(format_types_len):
             urls_ft.append([])
-            for res in self.format_types[fi]:
-                for angle in self.interesting_angles:
-                    urls_ft[fi].append(s3_format.format(self.wine.sku, angle, res, ext))
+            res = self.format_types[fi][-1]
+            for angle in self.interesting_angles:
+                urls_ft[fi].append(s3_format.format(self.wine.sku, angle, res, ext))
 
         form = 0
         for urls in urls_ft:
@@ -152,3 +153,15 @@ class WineImageDownloader:
 
         response_length = len(self.responses)
         return form >= response_length > 0
+
+
+if __name__ == '__main__':
+    from dotenv import load_dotenv
+    load_dotenv()
+
+    parser = CsvParser()
+    parser.parse()
+
+    dl_helper = WineImageSetDownloader(download_path='../../images/')
+    for parsed_wine in parser.parsed:
+        dl_helper.download_wine(parsed_wine)

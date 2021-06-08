@@ -1,19 +1,20 @@
 import os
 import sys
-import skimage.io
+import cwine
+from cwine.model.training import BottleDataset
+import cv2
+import mrcnn.model as modellib
+import numpy as np
 import skimage.color
-import tensorflow as tf
+import skimage.io
+from mrcnn import utils
+from mrcnn import visualize
+from mrcnn.config import Config
 from pycocotools.coco import COCO
 
 import coco
-from mrcnn import utils
-import mrcnn.model as modellib
-from mrcnn.config import Config
-from mrcnn import visualize
-import numpy as np
 
 ROOT_DIR = os.path.abspath("./")
-sys.path.append(ROOT_DIR)
 
 # Directory to save logs and trained model
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
@@ -23,9 +24,17 @@ COCO_MODEL_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
 # Directory of images to run detection on
 IMAGE_DIR = os.path.join(ROOT_DIR, "images")
 # Directory to store COCO images
-COCO_DIR = os.path.join(ROOT_DIR, "coco_data")
+COCO_DIR = '/media/jasper/projects/Projects/cbottle/'
+ANNOTATIONS = os.path.join(COCO_DIR, 'annotations')
 # Bottle class ID all we care about
 BOTTLE_ID = 40
+
+"""
+31/05/2021 Meeting:
+
+- For augmentation we are at risk of creating context clues, make sure we have enough base images
+- 
+"""
 
 
 class BottleConfig(Config):
@@ -38,26 +47,13 @@ class InferenceConfig(coco.CocoConfig):
     IMAGES_PER_GPU = 1
 
 
-class BottleDataset(coco.CocoDataset):
-
-    def __init__(self, subset):
-        super().__init__()
-        self.subset = subset
-
-    def prepare_bottles(self):
-        self.load_coco(COCO_DIR, self.subset, "2017", class_ids=[44], max_id=10000)
-        self.prepare()
-
-
 def train_bottle_model():
     config = BottleConfig()
-    annotations = os.path.join(COCO_DIR, 'annotations')
-    annotate_2017 = os.path.join(annotations, 'instances_train2014.json')
+    annotate_2017 = os.path.join(ANNOTATIONS, 'instances_train2017.json')
     ct = COCO(annotate_2017)
-    print(ct.getCatIds(['bottle']))
 
     dataset_train = coco.CocoDataset()
-    dataset_train.load_coco(COCO_DIR, "train", class_ids=[44], max_id=50000, auto_download=True)
+    dataset_train.load_coco(COCO_DIR, "train", year="2017", class_ids=[44], max_id=50000, auto_download=True)
     dataset_train.prepare()
 
     dataset_val = coco.CocoDataset()
@@ -104,6 +100,7 @@ def test_detect():
     if not os.path.exists(COCO_MODEL_PATH):
         utils.download_trained_weights(COCO_MODEL_PATH)
     loaded_model = get_inference_model()
+
     test_image = os.path.join(IMAGE_DIR, "input_sample.jpg")
     image = skimage.io.imread(test_image)
     if image.shape[2] == 4:
@@ -118,5 +115,30 @@ def test_detect():
     skimage.io.imsave(test_image.replace('images', 'splashes'), splash)
 
 
+def augment_picker():
+    annotate_2017 = os.path.join(ANNOTATIONS, 'instances_train2017.json')
+    ct = COCO(annotate_2017)
+    wine_images = ct.getImgIds(catIds=[44])
+    for wine_image_id in wine_images:
+        img_ann = ct.imgToAnns[wine_image_id]
+        for seg in img_ann:
+            if int(seg['category_id']) == 44 and float(seg['area']) > 1000:
+                wine_image_id_str = str(wine_image_id)
+                zeros_padding = 12 - len(wine_image_id_str)
+                file_path = os.path.join(COCO_DIR, 'train2017',
+                                         f'{"".join(["0" for _ in range(zeros_padding)])}{wine_image_id_str}.jpg')
+                img = cv2.imread(file_path)
+                cv2.imshow(file_path, img)
+                key = cv2.waitKey(0)
+                if key == 13:
+                    print('Saving image to augment base')
+                    cv2.imwrite(os.path.join(IMAGE_DIR, 'augment', f'{wine_image_id_str}.jpg'), img)
+
+                cv2.destroyWindow(file_path)
+                break
+
+
 if __name__ == '__main__':
-    train_bottle_model()
+    augment_model = get_inference_model()
+    bs = BottleDataset(IMAGE_DIR)
+    bs.augment_from_inference(augment_model)
