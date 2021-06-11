@@ -13,7 +13,7 @@ from cwine.model.structure import Wine, Country
 def _default_row_filter(row):
     type_filter = {'white', 'red', 'rose'}
     reqs = {'winery', 'region', 'year', 'country'}
-    size = '0.75'
+    size = '0.75 ltr'
 
     for key in reqs:
         if row[key] is None or row[key] == '':
@@ -22,7 +22,7 @@ def _default_row_filter(row):
     if row['type'] != 'simple' or row['has_360'] != 'True':
         return False
 
-    if row['wine_type'] not in type_filter or size not in row['size']:
+    if row['wine_type'] not in type_filter or row['size'] != size:
         return False
 
     return True

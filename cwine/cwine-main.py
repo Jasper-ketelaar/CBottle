@@ -12,9 +12,9 @@ from mrcnn import visualize
 from mrcnn.config import Config
 from pycocotools.coco import COCO
 
-import coco
+import cwine.coco as coco
 
-ROOT_DIR = os.path.abspath("./")
+ROOT_DIR = os.path.abspath("./../")
 
 # Directory to save logs and trained model
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
@@ -24,7 +24,7 @@ COCO_MODEL_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
 # Directory of images to run detection on
 IMAGE_DIR = os.path.join(ROOT_DIR, "images")
 # Directory to store COCO images
-COCO_DIR = '/media/jasper/projects/Projects/cbottle/'
+COCO_DIR = '/../coco/'
 ANNOTATIONS = os.path.join(COCO_DIR, 'annotations')
 # Bottle class ID all we care about
 BOTTLE_ID = 40
@@ -139,6 +139,8 @@ def augment_picker():
 
 
 if __name__ == '__main__':
-    augment_model = get_inference_model()
-    bs = BottleDataset(IMAGE_DIR)
-    bs.augment_from_inference(augment_model)
+    augment_picker()
+
+    #augment_model = get_inference_model()
+    #bs = BottleDataset(IMAGE_DIR)
+    #bs.augment_from_inference(augment_model)

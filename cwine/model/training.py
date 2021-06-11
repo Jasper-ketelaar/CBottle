@@ -61,16 +61,16 @@ class BottleDataset(Dataset):
         self.augments[file_id] = img
 
     def _load_augment_images(self):
-        for files in next(os.walk(self.augment_path)):
+        for (_, _, files) in os.walk(self.augment_path):
             for file in files:
                 if len(file) <= 1:
                     continue
                 self._load_augment_image(file)
 
     def _load_bottle_images(self):
-        for files_or_dirs in next(os.walk(self.images_path)):
-            for file_or_dir in files_or_dirs:
-                relative_path = os.path.join(self.images_path, file_or_dir)
+        for (_, _, files) in os.walk(self.images_path):
+            for file in files:
+                relative_path = os.path.join(self.images_path, file)
                 if os.path.isdir(relative_path):
                     break
 
@@ -165,7 +165,7 @@ class BottleDataset(Dataset):
                 contours = contours[0] if len(contours) == 2 else contours[1]
                 cnt = contours[-1]
                 rect = cv2.minAreaRect(cnt)
-                angle = rect[3]
+                angle = rect[2]
                 augment_img[bottle_mask, :] = 255
                 overlay_image_alpha(
                     augment_img, bottle_img[:, :, :3],
