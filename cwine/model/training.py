@@ -1,11 +1,14 @@
+import json
 import os
 import random
 
 import cv2
 import mrcnn.model as mlib
 import numpy as np
+import skimage.io
 from mrcnn.config import Config
 from mrcnn.utils import Dataset
+from pycocotools import mask
 
 
 def overlay_image_alpha(img, img_overlay, x, y, alpha_mask):
@@ -40,14 +43,84 @@ def overlay_image_alpha(img, img_overlay, x, y, alpha_mask):
 
 
 class BottleConfig(Config):
-    NAME = "bottles"
+    NAME = "wine_bottle"
+    IMAGES_PER_GPU = 2
     NUM_CLASSES = 1 + 1
+    STEPS_PER_EPOCH = 100
+    DETECTION_MIN_CONFIDENCE = 0.9
+
+
+def convert_annotation_to_rle(ann, height, width):
+    segm = ann['segmentation']
+    if isinstance(segm, list):
+        rles = mask.frPyObjects(segm, height, width)
+        rle = mask.merge(rles)
+    elif isinstance(segm['counts'], list):
+        rle = mask.frPyObjects(segm, height, width)
+    else:
+        rle = ann['segmentation']
+    return rle
+
+
+def convert_annotation_to_mask(ann, height, width):
+    rle = convert_annotation_to_rle(ann, height, width)
+    m = mask.decode(rle)
+    return m
 
 
 class BottleDataset(Dataset):
 
+    def __init__(self):
+        super().__init__()
+        self.source = "wine_bottle"
+
+    def load_bottles(self, dataset_dir, train=True):
+        self.add_class("wine_bottle", 1, "wine_bottle")
+        subset = "train" if train else "val"
+        annotations = f"{dataset_dir}/annotations/wine_bottles_{subset}2017.json"
+        images = f"{dataset_dir}/{subset}2017/"
+        with open(annotations) as annotation_file:
+            annotations = json.load(annotation_file)
+        for annotation in annotations:
+            image_id_str = str(annotation)
+            zeros_padding = 12 - len(image_id_str)
+            image_path = os.path.join(images, f"{'0' * zeros_padding}{image_id_str}.jpg")
+            image = skimage.io.imread(image_path)
+            height, width = image.shape[:2]
+            annotation_arr = annotations[annotation]
+            self.add_image(self.source, annotation, image_path, width=width, height=height,
+                           annotations=annotation_arr)
+
+    def load_mask(self, image_id):
+        image_info = self.image_info[image_id]
+        annotations = image_info["annotations"]
+        instance_masks = []
+        class_ids = []
+        for annotation in annotations:
+            m = convert_annotation_to_mask(annotation, image_info["height"],
+                                           image_info["width"])
+
+            instance_masks.append(m)
+            class_ids.append(1)
+
+        if class_ids:
+            stacked_mask = np.stack(instance_masks, axis=2).astype(np.bool)
+            class_ids = np.array(class_ids, dtype=np.int32)
+            return stacked_mask, class_ids
+        else:
+            return np.empty([0, 0, 0]), np.empty([0])
+
+    def image_reference(self, image_id):
+        info = self.image_info[image_id]
+        if info["source"] == "wine_bottle":
+            return info["path"]
+        else:
+            super(self.__class__, self).image_reference(image_id)
+
+
+class BottleAugmentation:
+
     def __init__(self, images_path):
-        super(BottleDataset, self).__init__()
         self.images_path = images_path
         self.augment_path = os.path.join(self.images_path, 'augment')
         self.augments = dict()
@@ -76,8 +149,14 @@ class BottleDataset(Dataset):
 
                 self.bottles.append(relative_path)
 
-    def _load_cropped_bottle_image(self, index):
+    def _load_cropped_bottle_image(self, index, angle):
         bottle_img = cv2.imread(self.bottles[index], cv2.IMREAD_UNCHANGED)
+        if angle != 0:
+            bottle_width = bottle_img.shape[1]
+            bottle_height = bottle_img.shape[0]
+            bottle_center = bottle_width / 2, bottle_height / 2
+            rot = cv2.getRotationMatrix2D(bottle_center, -angle, 1)
+            bottle_img = cv2.warpAffine(bottle_img, rot, (bottle_width, bottle_height))
         if bottle_img.shape[2] > 3:
             trans_mask = bottle_img[:, :, 3] == 0
             bottle_img[trans_mask] = [255, 255, 255, 255]
@@ -100,6 +179,36 @@ class BottleDataset(Dataset):
         new_img[:, :, 3] = mask
         crop = new_img[y:y + h, x:x + w]
         return crop
+
+    def _overwrite_mask_with_bottle(self, img, mask, bottle_index, splash_color=(75, 25, 240)):
+        img_copy = img.copy()
+        contour = []
+
+        for row_index, row in enumerate(mask):
+            for mask_index, mask_value in enumerate(row):
+                if mask_value:
+                    contour.append((mask_index, row_index))
+
+        rect = cv2.minAreaRect(np.array(contour))
+        angle = rect[2] - 90
+        center = rect[0]
+        crop_width = int(rect[1][0])
+        crop_height = int(rect[1][1])
+        x_offset = round(center[0] - (crop_height / 2))
+        y_offset = round(center[1] - (crop_width / 2))
+
+        bottle = self._load_cropped_bottle_image(bottle_index, angle)
+        bottle = cv2.resize(bottle, (crop_height, crop_width), interpolation=cv2.INTER_LINEAR)
+        alpha_mask = bottle[:, :, 3] / 255.0
+
+        overlay_image_alpha(
+            img_copy, bottle[:, :, :3],
+            x_offset, y_offset,
+            alpha_mask
+        )
+
+        cv2.imshow('overlayed', img_copy)
+        cv2.waitKey(0)
 
     def load_augmentation_base(self):
         # self.add_class("wine", 1, "wine_bottle")
@@ -124,7 +233,7 @@ class BottleDataset(Dataset):
             for index, bottle in enumerate(bottle_indices):
                 rand_bottle_index = rand_bottles[index]
                 bottle_mask = masks[:, :, bottle]
-
+                self._overwrite_mask_with_bottle(augment_img, bottle_mask, rand_bottle_index)
                 height = 0
                 width = 0
                 y_offset = 0
@@ -151,28 +260,19 @@ class BottleDataset(Dataset):
                     elif y_offset > 0:
                         break
 
-                augment_img[bottle_mask, :] = 0
-                height = round(height * 1.05)
-                bottle_img = self._load_cropped_bottle_image(rand_bottle_index)
+                # augment_img[bottle_mask, :] = 0
+                # height = round(height * 1.05)
+                bottle_img = self._load_cropped_bottle_image(rand_bottle_index, 0)
                 bottle_img = cv2.resize(bottle_img, dsize=(width, height), interpolation=cv2.INTER_AREA)
                 alpha_mask = bottle_img[:, :, 3] / 255.0
-                _, thresh = cv2.threshold(augment_img, 0, 255, cv2.THRESH_BINARY)
-                t_gray = cv2.cvtColor(thresh, cv2.COLOR_RGB2GRAY)
-                kernel = np.ones((3, 3), np.uint8)
-                mask = cv2.morphologyEx(t_gray, cv2.MORPH_CLOSE, kernel)
-                mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-                contours = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-                contours = contours[0] if len(contours) == 2 else contours[1]
-                cnt = contours[-1]
-                rect = cv2.minAreaRect(cnt)
-                angle = rect[3]
+
                 augment_img[bottle_mask, :] = 255
                 overlay_image_alpha(
                     augment_img, bottle_img[:, :, :3],
                     x_offset, y_offset,
                     alpha_mask
                 )
-
+            cv2.imshow('aug_post', augment_img)
             while cv2.waitKey(0) != 13:
                 pass
 

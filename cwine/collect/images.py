@@ -117,7 +117,7 @@ class WineImageDownloader:
             [64, 128, 256, 384, 512],
             [85, 171, 341, 512, 683],
         ]
-        self.interesting_angles = [0]
+        self.interesting_angles = [0, 6]
         # self.interesting_angles = [0, 1, 5, 6, 7, 11]
         self.responses = dict()
 
@@ -157,6 +157,7 @@ class WineImageDownloader:
 
 if __name__ == '__main__':
     from dotenv import load_dotenv
+
     load_dotenv()
 
     parser = CsvParser()
