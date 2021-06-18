@@ -3,7 +3,7 @@
 ## Authors
 
 - Jasper Ketelaar, j.ketelaar@student.tudelft.nl, 4453050
-- Matthijs van Wijngaarden, ..., ...
+- Matthijs van Wijngaarden, m.c.vanwijngaarden@student.tudelft.nl, 4271785
 
 ## Introduction
 
