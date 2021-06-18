@@ -1,3 +1,4 @@
+import heapq
 import os
 from glob import glob
 from typing import Optional
@@ -46,7 +47,7 @@ class KeypointModel:
             if error != 0 or not feature.any():
                 continue
             index_dict.update({
-                ids_length: (bottle_sku, feature)
+                ids_length: bottle_sku
             })
             ids_list = np.linspace(ids_length, ids_length, num=feature.shape[0], dtype=np.int64)
             ids_length += 1
@@ -77,11 +78,11 @@ class KeypointModel:
         if isinstance(image, str):
             parsed = cv2.imread(image, cv2.IMREAD_COLOR)
 
-        height, width = parsed.shape[:2]
-        scale = DEST_HEIGHT / height
-        if scale != 1:
-            # TODO: Confirm necessary considering scale invariance
-            parsed = cv2.resize(parsed, (int(height * scale), int(width * scale)))
+        # height, width = parsed.shape[:2]
+        # scale = DEST_HEIGHT / height
+        # if scale != 1:
+        #     # TODO: Confirm necessary considering scale invariance
+        #     parsed = cv2.resize(parsed, (int(height * scale), int(width * scale)))
 
         gray_cvt = cv2.cvtColor(parsed, cv2.COLOR_BGR2GRAY)
         kp, des = self.sift.detectAndCompute(gray_cvt, None)
@@ -96,13 +97,27 @@ class KeypointModel:
             scores, neighbours = [], []
             if feature.size > 0:
                 scores, neighbours = self.index.search(feature, k=k)
+
             num_results, num_dimension = neighbours.shape
+            result_dict = dict()
             for i in range(num_results):
                 unique = np.unique(neighbours[i]).tolist()
                 for f_id in unique:
                     if f_id == -1:
                         continue
-                    # TODO: Rerank results based on desc occurrences
+                    result_dict[f_id] = result_dict.get(f_id, 0) + 1
+
+            best_match = None
+            max_score = 0
+            for r_id in result_dict:
+                score = result_dict[r_id]
+                if score <= max_score:
+                    continue
+                best_match = r_id
+                max_score = score
+
+            results.append(best_match)
+        return results
 
 
 def get_bottle_crop(image, model):

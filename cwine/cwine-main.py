@@ -202,8 +202,10 @@ def run_bottle_augmentation(coco=True):
 
 if __name__ == '__main__':
     kp_index_model = KeypointModel(IMAGE_DIR)
-    kp_index_model.prepare()
-    kp_index_model.train_index()
+    kp_index_model.prepare(new_index=False)
+    err, sift = kp_index_model.compute_sift_descriptors('images/874920-512.png')
+    kp_index_model.search([None], [sift], k=1)
+    # kp_index_model.train_index()
     # test_inference_model()
     # ba = BottleAugmentation(IMAGE_DIR)
     # ba.augment_from_inference(inference)
