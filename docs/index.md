@@ -48,9 +48,9 @@ implementation thereof was influenced by with this fact in mind.
 
 Before delving deeper into the design choices within our predictor’s architecture, we discussed during meetings what our
 best base architecture would be. Our eyes quickly, and logically, fell upon the Mask R-CNN \[1] architecture. One reason
-was the prior use of it for specifically tackling the domain adaptation problem \[2], another reason was the fact that it
-was also used as the base architecture for an application that only aimed to detect one class, balloons, as well \[3],
-and the final reason was the fact that it could generate masks of wine bottles, which would come in handy later.
+was the prior use of it for specifically tackling the domain adaptation problem \[2], another reason was the fact that
+it was also used as the base architecture for an application that only aimed to detect one class, balloons, as well \[3]
+, and the final reason was the fact that it could generate masks of wine bottles, which would come in handy later.
 
 ![maskrcnn](images/MaskRCNN.png)
 
@@ -74,11 +74,11 @@ the issue of unlearning redundant types of bottles was to find images that conta
 bottle and teach the network to only predict the wine bottle as a bottle and punishing it for mispredicting a different
 bottle as a bottle.
 
-We discussed ways on how to improve our predictor’s accuracy and focused on the idea of using augmentation of
-the original image with pictures of wine bottles. Since the segmentations of the dataset were available we discussed
-that we could use these as the basis for our augmentation as we could cut out the mask and try to fit in one of the
-images from our dataset. We produced an interface to help us with this as we still decided that since these
-augmentations could cause context problems. 
+We discussed ways on how to improve our predictor’s accuracy and focused on the idea of using augmentation of the
+original image with pictures of wine bottles. Since the segmentations of the dataset were available we discussed that we
+could use these as the basis for our augmentation as we could cut out the mask and try to fit in one of the images from
+our dataset. We produced an interface to help us with this as we still decided that since these augmentations could
+cause context problems.
 
 Some of the discussions with our TA will also come back in the following sections.
 
@@ -182,7 +182,7 @@ The results of the augmentation are a few examples of photos of the augmentation
 
 ![aug_fridge](images/aug_fridge.png)
 
-As was clear for an example posted before, the augmentation performs best when augmenting into a bottle shape that fits
+As was clear from an example posted before, the augmentation performs best when augmenting into a bottle shape that fits
 the wine bottles and does not require some crazy stretching like in this example:
 
 ![aug_stretch](images/augstretch.png)
@@ -197,28 +197,28 @@ These along with shape errors were not included in our training set for reasons 
 
 This is the most interesting part of the results. We trained the model on a collection of both augmented images and base
 images that were from before augmentation. The results also aim to answer the question: "Can a pretrained network
-passively forget parts of how it detects a class?". The specific settings for which we trained the network can be found
-within the code.
+passively forget parts of how it detects a class?".
 
-As you can see the bottles that the network detect vary from many different types from milk cartons to candle holders to
-jars of peanutbutter to water bottles. We hypothesised that as the network performs more training these class specifics
-will be forgotten more quickly depending on how close shape/texture information relates to that of a wine bottle. By
-this we mean to say that a jar of peanutbutter should no longer be classified after less epochs than a luxurious bottle
-of water that resembles the shape of a bottle.
+As you can see the bottles that the network detect consist of a lot of different types. From milk cartons to candle
+holders to jars of peanutbutter to water bottles. We hypothesised that as the network performs more training these class
+specifics will be forgotten more quickly depending on how close shape/texture information relates to that of a wine
+bottle. By this we mean to say that a jar of peanutbutter should no longer be classified after less epochs than a
+luxurious bottle of water that resembles the shape of a bottle.
+
 ![peanut_butter](images/peanut_butter.png)
+
 ![luxurious-water](images/wine_shape_water.png)
+
 ![wine-bottle](images/wine_bottle.png)
 
-In the intermediate results that we explored of this network after different epochs of training we found our hypothesis
-to hold. We took a model that trained for 10 epochs, a model that trained for 20 epochs and a model that trained for 30
-epochs to see these results. We also included the results of the base model for comparison which is simply a model
-trained for 0 epochs. We took these intermediate results since when training the model we found that the gain in
-performance starts declining after 30 epochs and we do not want to overfit on our training/evaluation set.
+We use the intermediate results of the network after a certain amount of epochs to evaluate the progress as we
+hypothesized. We took a model that trained for 10 epochs, a model that trained for 20 epochs, and a model that trained
+for 30 epochs to see these results. We also included the results of the base model for comparison which is simply a
+model trained for 0 epochs. We took these intermediate results since when training the model we found that the gain in
+performance became too small after ~35 epochs.
 
-To measure the performance we tested 100 images that we knew had no wine bottle in it to see after how many epochs the
-model started dropping it as a predicted wine bottle:
-
-The results describing the percentage:
+To measure the performance we ran the intermediate stages on 100 images that we knew had no wine bottle in it. This
+could then be used to make a statement about after the 'forgetting' progress after x epochs. These are the results:
 
 | 0 epochs | 10 epochs | 20 epochs | 30 epochs |
 |----------|-----------|-----------|-----------|
@@ -226,12 +226,12 @@ The results describing the percentage:
 
 The decline in the percentage difference between the epochs actually matches quite nicely with the decline of the loss
 function. We do note that obviously a test set of 100 images is not enough to really make a statement but since we only
-encountered this hypothesis later during our project and the images had to be manually picked we did not have time to
-research this as much as we could have. When checking out which type of images were still getting recognized as bottle
-we noticed that they were more varied in shape than we expected them to be. Our hypothesis of the model getting better
-at objects that to us seem more clearly not a wine bottle was not necessarily reflected in this subset. We are not sure
-if that is simply an artifact of a low sample size and it could have simply been that or that it means there were
-different aspects that the network had a harder time 'passively forgetting'.
+encountered this question during the last two weeks of our project, and as the images had to be manually picked we did
+not have time to go further. When checking out which type of images were still getting recognized as bottle we noticed
+that they were more varied in shape than we expected them to be. Our hypothesis of the model getting better at objects
+that to us seem more clearly not a wine bottle was not necessarily reflected in this subset. We are not sure if that is
+simply an artifact of a low sample size and it could have simply been that or that it means there were different aspects
+that the network had a harder time 'passively forgetting'.
 
 ### Keypoint Detector
 
@@ -274,11 +274,11 @@ direction during our weekly meetings.
 
 ## References
 
-- [1]: Kaiming He, Georgia Gkioxari, Piotr Dollár, Ross Girshick (2017). Mask R-CNN.
-- [2]: Chen, Y.; Li, W.; Sakaridis, C.; Dai, D.; and Gool, L. V. 2018. Domain Adaptive Faster R-CNN for Object Detection
+- \[1]: Kaiming He, Georgia Gkioxari, Piotr Dollár, Ross Girshick (2017). Mask R-CNN.
+- \[2]: Chen, Y.; Li, W.; Sakaridis, C.; Dai, D.; and Gool, L. V. 2018. Domain Adaptive Faster R-CNN for Object Detection
   in the Wild. In CVPR
-- [3]: Waleed Abdulla (2018). Splash of Color: Instance Segmentation with Mask R-CNN and TensorFlow
-- [4]: Ebrahim Karami, Siva Prasad, Mohamed S. Shehata (2017). Image Matching Using SIFT, SURF, BRIEF and ORB:
+- \[3]: Waleed Abdulla (2018). Splash of Color: Instance Segmentation with Mask R-CNN and TensorFlow
+- \[4]: Ebrahim Karami, Siva Prasad, Mohamed S. Shehata (2017). Image Matching Using SIFT, SURF, BRIEF and ORB:
   Performance Comparison for Distorted Images
 
 ## Work division
