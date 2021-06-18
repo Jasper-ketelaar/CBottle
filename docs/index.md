@@ -47,9 +47,9 @@ that we would have to solve a system under the ‘Domain Adaptation’ clause. M
 implementation thereof was influenced by with this fact in mind.
 
 Before delving deeper into the design choices within our predictor’s architecture, we discussed during meetings what our
-best base architecture would be. Our eyes quickly, and logically, fell upon the Mask R-CNN [1] architecture. One reason
-was the prior use of it for specifically tackling the domain adaptation problem [2], another reason was the fact that it
-was also used as the base architecture for an application that only aimed to detect one class, balloons, as well [3],
+best base architecture would be. Our eyes quickly, and logically, fell upon the Mask R-CNN \[1] architecture. One reason
+was the prior use of it for specifically tackling the domain adaptation problem \[2], another reason was the fact that it
+was also used as the base architecture for an application that only aimed to detect one class, balloons, as well \[3],
 and the final reason was the fact that it could generate masks of wine bottles, which would come in handy later.
 
 ![maskrcnn](images/MaskRCNN.png)
@@ -65,7 +65,7 @@ feature detection algorithms. The main point that we were worried about was the 
 since it would need to be able to be dynamic in its classification as new wines are added and older wines are disabled.
 After discussing this with our TA we decided that keypoint detection would be the best way to solve this problem since
 it is more dynamic and less time costly. The keypoint detection technique we ended up going for is SIFT after reading
-research done on different techniques [4].
+research done on different techniques \[4].
 
 For the Mask-RCNN we needed to teach the network to separate any 'non-wine bottle' from a wine bottle. When discussing
 this with the TA we actually found out that there could be an interesting research question in this: "Can a pretrained
