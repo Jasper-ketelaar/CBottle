@@ -172,7 +172,7 @@ the complete model is an evaluation of the results of the intermediate stages.
 
 ### Augmentation
 
-The results of the augmentation are a few examples of photos of the augmentation code in this repository..
+The results of the augmentation are a few examples of photos of the augmentation code in this repository:
 
 ![aug_1](images/aug_1.png)
 
