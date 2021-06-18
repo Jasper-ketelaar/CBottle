@@ -129,6 +129,7 @@ class BottleAugmentation:
         self._load_bottle_images()
 
     def _load_augment_image(self, file: str):
+        print(file)
         file_id = int(file[:-4])
         img = cv2.imread(os.path.join(self.augment_path, file))
         self.augments[file_id] = img
@@ -210,20 +211,20 @@ class BottleAugmentation:
         cv2.imshow('overlayed', img_copy)
         cv2.waitKey(0)
 
-    def load_augmentation_base(self):
-        # self.add_class("wine", 1, "wine_bottle")
-        pass
-
     def augment_from_inference(self, inf_model: mlib.MaskRCNN):
         for augment in self.augments.keys():
             augment_img = self.augments[augment]
 
             results = inf_model.detect([augment_img])[0]
             class_ids = results['class_ids']
-            only_bottles = [x != 40 for x in class_ids]
+            if inf_model.config.NUM_CLASSES > 2:
+                only_bottles = [x != 40 for x in class_ids]
+            else:
+                only_bottles = [False for _ in class_ids]
             masked_bottle_scores = np.ma.masked_array(data=results['scores'], mask=only_bottles,
                                                       dtype=np.float32, copy=True, fill_value=0.0)
             masked_bottle_indices = np.argwhere(masked_bottle_scores)
+
             if len(masked_bottle_indices) == 0:
                 continue
             bottle_indices = np.concatenate(masked_bottle_indices, axis=0)
@@ -233,7 +234,7 @@ class BottleAugmentation:
             for index, bottle in enumerate(bottle_indices):
                 rand_bottle_index = rand_bottles[index]
                 bottle_mask = masks[:, :, bottle]
-                self._overwrite_mask_with_bottle(augment_img, bottle_mask, rand_bottle_index)
+                # self._overwrite_mask_with_bottle(augment_img, bottle_mask, rand_bottle_index)
                 height = 0
                 width = 0
                 y_offset = 0
@@ -260,20 +261,25 @@ class BottleAugmentation:
                     elif y_offset > 0:
                         break
 
-                # augment_img[bottle_mask, :] = 0
-                # height = round(height * 1.05)
+                augment_img[bottle_mask, :] = 0
+                height = round(height * 1.1)
+                width = round(width * 1.1)
                 bottle_img = self._load_cropped_bottle_image(rand_bottle_index, 0)
                 bottle_img = cv2.resize(bottle_img, dsize=(width, height), interpolation=cv2.INTER_AREA)
                 alpha_mask = bottle_img[:, :, 3] / 255.0
 
-                augment_img[bottle_mask, :] = 255
+                augment_img[bottle_mask, :] = 0
                 overlay_image_alpha(
                     augment_img, bottle_img[:, :, :3],
                     x_offset, y_offset,
                     alpha_mask
                 )
             cv2.imshow('aug_post', augment_img)
-            while cv2.waitKey(0) != 13:
-                pass
+
+            last_key = cv2.waitKey()
+            while last_key != 13 and last_key != 27:
+                last_key = cv2.waitKey()
+            if last_key == 13:
+                cv2.imwrite(os.path.join(self.augment_path, 'report', f'{augment}.jpg'), augment_img)
 
             cv2.destroyAllWindows()

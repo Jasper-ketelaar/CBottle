@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from typing import Optional
 
 import cv2
@@ -64,7 +65,7 @@ def train_bottle_model():
         dataset_train,
         dataset_val,
         learning_rate=config.LEARNING_RATE,
-        epochs=30,
+        epochs=100,
         layers='heads'
     )
 
@@ -76,6 +77,7 @@ def get_inference_model(weights_path: Optional[str] = COCO_MODEL_PATH):
     model = modellib.MaskRCNN(mode="inference", model_dir=MODEL_DIR, config=config)
     if weights_path is None:
         weights_path = model.find_last()
+    print(weights_path)
     model.load_weights(weights_path, by_name=True)
     return model
 
@@ -92,7 +94,7 @@ def color_splash(image, mask):
     return splash
 
 
-def test_detect(loaded_model, kp_model, image_name="test-new.jpg"):
+def test_detect(loaded_model, kp_model=None, image_name="test-new.jpg"):
     # Download COCO trained weights from Releases if needed
     if not os.path.exists(COCO_MODEL_PATH):
         utils.download_trained_weights(COCO_MODEL_PATH)
@@ -100,7 +102,8 @@ def test_detect(loaded_model, kp_model, image_name="test-new.jpg"):
     test_image = os.path.join(IMAGE_DIR, image_name)
     image = cv2.imread(test_image)
     crop = get_bottle_crop(image, loaded_model)
-    kp_model.compute_sift_descriptors(crop)
+    if kp_model is not None:
+        kp_model.compute_sift_descriptors(crop)
 
 
 def augment_picker():
@@ -144,6 +147,14 @@ def segment_picker(subset):
         img_ann = ct.imgToAnns[wine_image_id]
         img_ann_updated = []
         add = True
+        wine_image_id_str = str(wine_image_id)
+        zeros_padding = 12 - len(wine_image_id_str)
+        file_path = os.path.join(COCO_DIR, f'{subset}2017',
+                                 f'{"".join(["0" for _ in range(zeros_padding)])}{wine_image_id_str}.jpg')
+        img = cv2.imread(file_path)
+        cv2.imshow(f'{last_key} - {file_path}', img)
+        cv2.waitKey()
+
         for seg in img_ann:
             if int(seg['category_id']) == 44 and float(seg['area']) > 1000:
                 segmentation = seg['segmentation']
@@ -176,11 +187,7 @@ def segment_picker(subset):
                     cv2.destroyAllWindows()
                     _inner_dump()
                     return
-                else:
-                    add = False
-                    cv2.destroyAllWindows()
-                    print("Don't use this image")
-                    break
+
         if add:
             picked_images[wine_image_id] = img_ann_updated
         cv2.destroyAllWindows()
@@ -188,10 +195,13 @@ def segment_picker(subset):
 
 
 def test_inference_model():
-    wbm = get_inference_model(weights_path=None)
-    detect_path = os.path.join(IMAGE_DIR, 'detect_test')
-    for file in os.listdir(os.path.join(IMAGE_DIR, 'detect_test')):
-        test_detect(wbm, image_name=os.path.join('detect_test', file))
+    for i in range(1, 7):
+        wbm = get_inference_model(weights_path=f'cache/{i}.h5')
+        detect_path = os.path.join(IMAGE_DIR, 'detect_test')
+        file = os.path.join(detect_path, 'peanut_butter.png')
+        test_detect(wbm, image_name=os.path.join(detect_path, file))
+        cv2.waitKey()
+        cv2.destroyAllWindows()
 
 
 def run_bottle_augmentation(coco=True):
@@ -201,29 +211,16 @@ def run_bottle_augmentation(coco=True):
 
 
 if __name__ == '__main__':
+    seconds = time.time()
     kp_index_model = KeypointModel(IMAGE_DIR)
-    kp_index_model.prepare(new_index=False)
-    err, sift = kp_index_model.compute_sift_descriptors('images/874920-512.png')
-    kp_index_model.search([None], [sift], k=1)
-    # kp_index_model.train_index()
+    kp_index_model.prepare()
+    # err, sift = kp_index_model.compute_sift_descriptors('images/874920-512.png')
+    # kp_index_model.search([None], [sift], k=1)
+    kp_index_model.train_index()
+    print(f"Seconds to index: {time.time() - seconds}")
     # test_inference_model()
-    # ba = BottleAugmentation(IMAGE_DIR)
-    # ba.augment_from_inference(inference)
+    # run_bottle_augmentation(coco=False)
 
-    # segment_picker('val')
+    # test_inference_model()
 
     # train_bottle_model()
-
-# Dataset
-# - Images from coco with modified annotations
-# - Augmented images from coco with own wine bottles
-# - Validation set based on local images and inference model detection results/custom handmade polygons
-
-# Training
-# - 0.01 learning rate
-# - Frozen head layers
-
-# Concerns
-# - Optimal scale for keypoints
-# - Indexing the known keypoint feature vectors
-# -

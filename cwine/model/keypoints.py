@@ -1,5 +1,5 @@
-import heapq
 import os
+import pickle as pkl
 from glob import glob
 from typing import Optional
 
@@ -22,12 +22,15 @@ class KeypointModel:
         self.bottle_path = bottle_path
         self.index = None
         self.sift = None
+        self.index_dict = dict()
 
     def prepare(self, new_index=True):
         if new_index:
             self.index = faiss.index_factory(SIFT_DIMENSIONS, "IDMap,PCA128,IVF2048,PQ16")
         else:
             self.index = faiss.read_index('cache/keypoints.index')
+            with open('cache/keypoints_map.pkl', 'rb') as f:
+                self.index_dict = pkl.load(f)
         if faiss.get_num_gpus() > 0:
             print("FAISS Indexing on GPU")
             self.index = faiss.index_cpu_to_all_gpus(self.index)
@@ -41,7 +44,7 @@ class KeypointModel:
         files = glob(os.path.join(self.bottle_path, '*.png')) + glob(os.path.join(self.bottle_path, '*.jpg'))
         print(f'{len(files)} bottle images to index')
 
-        for bottle_file in tqdm(files[:250]):
+        for bottle_file in tqdm(files):
             bottle_sku = bottle_file[bottle_file.rindex(os.path.sep) + 1:bottle_file.rindex('-')]
             error, feature = self.compute_sift_descriptors(bottle_file)
             if error != 0 or not feature.any():
@@ -72,6 +75,9 @@ class KeypointModel:
         if not os.path.exists('cache'):
             os.mkdir('cache')
         faiss.write_index(self.index, 'cache/keypoints.index')
+        self.index_dict.update(index_dict)
+        with open('cache/keypoints_map.pkl', 'wb') as f:
+            pkl.dump(self.index_dict, f)
 
     def compute_sift_descriptors(self, image):
         parsed = image
@@ -129,6 +135,20 @@ def get_bottle_crop(image, model):
     r = results[0]
     if 'scores' not in r or len(r['scores']) == 0:
         return image
+    contours = []
+    for mask_idx in range(len(r['scores'])):
+        contour = []
+        mask = r['masks'][:, :, mask_idx]
+        for row_index, row in enumerate(mask):
+            for mask_index, mask_value in enumerate(row):
+                if mask_value:
+                    contour.append((mask_index, row_index))
+        contour = np.array(contour)
+        contours.append(contour)
+    cv2.imshow('clean', image)
+    cv2.drawContours(image, contours, -1, 255, -1)
+    cv2.imshow('contours', image)
+    cv2.waitKey()
     best_score_idx = np.argmax(r['scores'])
     mask = r['masks'][:, :, best_score_idx]
     contour = []
